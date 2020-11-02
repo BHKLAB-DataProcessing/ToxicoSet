@@ -1,3 +1,5 @@
+#devtools::install_github("bhklab/CoreGx", ref = "master", force = T)
+#devtools::install_github("bhklab/ToxicoGx", ref = "master", force = T)
 library(ToxicoGx)
 library(Biobase)
 library(affy)
@@ -8,11 +10,10 @@ library(biomaRt)
 library(ggplot2)
 library(data.table)
 library(SummarizedExperiment)
-#devtools::install_github("bhklab/ToxicoGx", ref = "master", force = T)
 
 create_phenodata_DM <- function(species=c("Rat"), verbose = TRUE) { 
   if (verbose) {message("Creating phenodata_DM object...")} 
-  phenodata_DM <- read.csv("data/DM/phenodataDMSOcontrols.csv", stringsAsFactors = FALSE)
+  phenodata_DM <- read.csv("../data/DM/phenodataDMSOcontrols.csv", stringsAsFactors = FALSE)
   phenodata_DM$Dose_Unit <- "μM"
   
   if(verbose) {message("phenodata_DM object created!")}
@@ -32,7 +33,7 @@ create_exprsdata_DM <- function(species=c("Rat"), phenodata_DM, verbose = TRUE) 
   
   #esetNorm <- just.rma(filenames = celFiles, verbose = TRUE, cdfname = "rat2302rnensgcdf")
   #saveRDS(esetNorm, "data/DM/eset_DM.rds")
-  eset <- readRDS("data/DM/eset_DM.rds")
+  eset <- readRDS("../data/DM/eset_DM.rds")
   
   storageMode(eset)<-"environment"
   eset <-subset(eset, substr(rownames(eset@assayData$exprs), 0, 4) != "AFFX")
@@ -53,7 +54,6 @@ create_featuredata_DM <- function(species=c("Rat"), eset, verbose = TRUE){
     storageMode(eset) <- "environment"
     affxrows <- rownames(eset@assayData$exprs)
     rownames(eset@assayData$exprs) <- substr(rownames(eset@assayData$exprs), 1, nchar(affxrows)-3)
-    #saveRDS(affxrows, file = "./data/DM/probesRatVitro1.rds") 
     CELgenes <- affxrows
     CELgenes1 <- gsub(".at", " ", CELgenes)
     results <-getBM(attributes=c("external_gene_name","ensembl_gene_id","gene_biotype","entrezgene_id"
@@ -93,18 +93,25 @@ create_Expressionset <- function(species=c("Rat"), eset, verbose = TRUE){
 
 pData(eset) <- phenodata_DM
 fData(eset) <- featuredata_DM
+#sorting rownames to maintain feature data mapping that m=is otherwise shuffled after converting to SE
+fData(eset) <- fData(eset)[sort(rownames(fData(eset))),]
+stopifnot(all(rownames(fData(eset)) == rownames(exprs(eset))))
+stopifnot(all(rownames(pData(eset)) == colnames(exprs(eset))))
+
 storageMode(eset) <- "lockedEnvironment"
 return(eset)
-#saveRDS(eset, file="data/DM/ExpressionSet.rds")
   }
 }
 
 ExpressionSet <- create_Expressionset("Rat", eset)
-all(rownames(phenodata_DM) == colnames(exprs(ExpressionSet)))
 
 #the conversion function might be incorporated to the package later. This step needs to be updated then
 print("Creating summarized experiment object...")
-new_SE_DM <-  as(ExpressionSet, value="SummarizedExperiment")
+#new_SE_DM <-  as(ExpressionSet, value="SummarizedExperiment")
+new_SE_DM <- SummarizedExperiment::makeSummarizedExperimentFromExpressionSet(ExpressionSet)
+stopifnot(all(rownames(colData(new_SE_DM)) == rownames(pData(ExpressionSet))))
+stopifnot(all(rownames(rowData(new_SE_DM)) == rownames(fData(ExpressionSet))))
+
 print("Done!")
 
 ######################toxicoset constructor function ######################
@@ -141,7 +148,7 @@ curationTissue <- create_curationTissue(phenodata_DM)
 
 
 #reading the metadata downloaded from diXa
-s_Hepatocyte <- read.csv("data/DM/s_Hepatocyte.csv", stringsAsFactors = F, sep = "\t")
+s_Hepatocyte <- read.csv("../data/DM/s_Hepatocyte.csv", stringsAsFactors = F, sep = "\t")
 
 create_drug <- function(metadataFile){
   
@@ -185,7 +192,7 @@ drugMatrix <- ToxicoSet("drugMatrix_rat",
                   datasetType = c("perturbation"),
                   verify = TRUE)
 
-saveRDS(drugMatrix, "QC/drugMatrix.rds")
+saveRDS(drugMatrix, "../results/drugMatrix.rds")
 
 
 

@@ -5,19 +5,14 @@
 # For plotting the gene expression under same conditions using the package, the first step is to load the datasets from disk or download them using the downloadTSet function above. In the following example, we use the toy dataset provided with the package to illustrate the process. 
 # To plot, the function drugGeneResponseCurve has been used wherein mandatory inputs such as dataset, drug name, cell-line, molecular type, gene name, dose and time points should be specified.
 
-
-# require(devtools)
-# devtools::install_github("bhklab/ToxicoGx", ref = "master", force = T)
-
-
 #**Study 1 - Plot time dependent dose response of Carbon tetra chloride on CYP1A1 gene.**
   
 library(ToxicoGx)
 library(ggplot2)
 # Load the tset 
-TGGATES_humanldh <- readRDS("data/QC/TGGATES_humanldh.rds")
+TGGATES_humanldh <- readRDS("../results/TGGATES_humanldh.rds")
 
-png("QC1_TGH.png")
+png("../results/QC1_TGH.png")
 drugGeneResponseCurve(tSet = TGGATES_humanldh, duration = c("2", "8", "24"), 
                       cell_lines = "Hepatocyte", mDataTypes = "rna", 
                       features = "ENSG00000140465_at", 
@@ -32,7 +27,7 @@ library(ToxicoGx)
 library(car)
 library(SummarizedExperiment)
 #Genes of interest
-probes <- readRDS("data/QC/PCA_probes.rds")
+probes <- readRDS("../data/QC/PCA_probes.rds")
 
 #extracting data from tset
 #featureData
@@ -40,7 +35,7 @@ feat_data <- as.data.frame(rowData(TGGATES_humanldh@molecularProfiles$rna))
 #metaData
 pheno_data <- as.data.frame(colData(TGGATES_humanldh@molecularProfiles$rna))
 #expression values
-assay_data <- assays(TGGATES_humanldh@molecularProfiles$rna)$exprs
+assay_data <- assay(TGGATES_humanldh@molecularProfiles$rna)
 rownames(assay_data) <- gsub("_at", "", rownames(assay_data))
 
 #subsetting the samples - Control, high dose at 24 hr time point
@@ -60,7 +55,7 @@ expr$control[rownames(expr) %in% as.character(high$samplename)] <- 2 #High
 #PCA & plotting
 tset.pca <- prcomp(as.matrix(expr),scale. = TRUE)
 
-png("QC2_TGH.png")
+png("../results/QC2_TGH.png")
 
 scatterplot(x = tset.pca$x[,1], 
             y = tset.pca$x[,2], 
@@ -96,7 +91,7 @@ dev.off()
     #subset for ony high conc
     drug_subset_high <- subset(drug_subset, concentration == conc)
     #extracting exprs
-    assay <- assays(TGGATES_humanldh@molecularProfiles$rna)$exprs
+    assay <- assay(TGGATES_humanldh@molecularProfiles$rna)
     #subsetting exprs matrix
     drug_subset$expression <- assay[gene,as.character(drug_subset$samplename)]
     drug_subset_high$expression <- assay[gene,as.character(drug_subset_high$samplename)]
@@ -124,7 +119,7 @@ dev.off()
   legendnames <- c('CBR3','EMC3','GLA','NQO1','HTAT1P2','F2RL2')
   colours <- c("purple", "red","green","violet","orange", "turquoise")
   
-  png("QC3_TGH.png")
+  png("../results/QC3_TGH.png")
   
   matplot(x = time, y = t(values_se)+100, col=colours, 
           pch=rep(21,ncol(values_se)), type=c("b"), lty=rep(1,ncol(values_se)), lwd=rep(5,ncol(values_se)),
@@ -159,7 +154,7 @@ dev.off()
   
   
   #HCC signature genes downloaded from supp data.
-  raw_hcc <- read.delim("data/QC/Supp._data_2.txt", sep = "\t") 
+  raw_hcc <- read.delim("../data/QC/Supp._data_2.txt", sep = "\t") 
   colnames(raw_hcc) <- c("feature","direction")
   
   ff <- as.data.frame(rowData(TGGATES_humanldh@molecularProfiles$rna))
@@ -182,9 +177,9 @@ dev.off()
   # drug.perturbation <- ToxicoGx::drugPerturbationSig(tSet = TGGATES_humanldh,mDataType="rna",cell_lines = "Hepatocyte",
   #                                           duration = "24", dose = c("Control", "Low"),drugs = ToxicoGx::drugNames(TGGATES_humanldh),verbose=FALSE)
   #                                          
-  #saveRDS(drug.perturbation, "data/QC/drug.perturbationAllCtrlLow.rds")
+  #saveRDS(drug.perturbation, "../data/QC/drug.perturbationAllCtrlLow.rds")
   
-  drug.perturbation <- readRDS("data/QC/drug.perturbationAllCtrlLow.rds")
+  drug.perturbation <- readRDS("../data/QC/drug.perturbationAllCtrlLow.rds")
   
   # res_all <- apply(drug.perturbation[,,c("tstat", "fdr")],
   #                  2, function(x, HCC){
@@ -199,14 +194,14 @@ dev.off()
   # res_all <- res_all[order(res_all[,3]),]
   # 
   # View(res_all)
-  #saveRDS(res_all, "data/QC/res_all.rds")
+  #saveRDS(res_all, "../data/QC/res_all.rds")
   
-  res_all <- readRDS("data/QC/res_all.rds")
+  res_all <- readRDS("../data/QC/res_all.rds")
   xtable(res_all,
          caption='Connectivity Score results for HCC and TG-GATEs PHH gene signature.')
   
   #checking the correlation between published and recomputed scores
-  sscmap.scores <- read.csv("data/QC/CS3_table3.csv", stringsAsFactors = F)
+  sscmap.scores <- read.csv("../data/QC/CS3_table3.csv", stringsAsFactors = F)
   
   badchars <- "[\xb5]|[]|[ ,]|[;]|[:]|[-]|[+]|[*]|[%]|[$]|[#]|[{]|[}]|[[]|[]]|[|]|[\\^]|[/]|[\\]|[.]|[_]|[ ]|[(]|[)]"
   
@@ -229,7 +224,7 @@ dev.off()
   
   #plot the correlation
   #pdf("CS3_corrplot_all.pdf", width = 25, height = 20)
-  png("QC4.1_TGH.png")
+  png("../results/QC4.1_TGH.png")
   
   scatterplot(sub_mer_ssc_res$Connectivity,sub_mer_ssc_res$setscore,boxplots = F, grid = T, xlab = "ConnectivityScore", ylab = "sscMAPscore",cex = 1,
               pch = 20, cex.lab=1, cex.axis=1, cex.main=1.5, cex.sub=1.5, par(mar = c(7, 7, 0, 0)))
@@ -260,7 +255,7 @@ dev.off()
   
   #plot the correlation
   #pdf("CS3_corrplot_fdrfilter.pdf", width = 20, height = 15)
-  png("QC4.2_TGH.png")
+  png("../results/QC4.2_TGH.png")
   
   scatterplot(sub_mer_ssc_res_fil$Connectivity,sub_mer_ssc_res_fil$setscore,boxplots = F, grid = T, xlab = "ConnectivityScore", ylab = "sscMAPscore",cex = 1,
               pch = 20, cex.lab=1, cex.axis=1, cex.main=1.5, cex.sub=1.5)
@@ -276,8 +271,8 @@ dev.off()
 #  **Study 1 - Plot time dependent dose response of Carbon tetra chloride on Cyp1a1 gene.**
   library(ToxicoGx)
   # Load the tset 
-  TGGATES_ratldh <- readRDS("data/QC/TGGATES_ratldh.rds")
-  png("QC1_TGR.png")
+  TGGATES_ratldh <- readRDS("../results/TGGATES_ratldh.rds")
+  png("../results/QC1_TGR.png")
   
   drugGeneResponseCurve(tSet = TGGATES_ratldh, duration = c("2", "8", "24"), 
                         cell_lines = "Hepatocyte", mDataTypes = "rna", 
@@ -309,7 +304,7 @@ dev.off()
     #subset for ony high conc
     drug_subset_high <- subset(drug_subset, concentration == conc)
     #extracting exprs
-    assay <- assays(TGGATES_ratldh@molecularProfiles$rna)$exprs
+    assay <- assay(TGGATES_ratldh@molecularProfiles$rna)
     #subsetting exprs matrix
     drug_subset$expression <- assay[gene,as.character(drug_subset$samplename)]
     drug_subset_high$expression <- assay[gene,as.character(drug_subset_high$samplename)]
@@ -337,7 +332,7 @@ dev.off()
   legendnames <- c('CBR3','EMC3','NQO1','HTAT1P2','F2RL2')
   colours <- c("purple", "red","green","violet","orange", "turquoise")
   
-  png("QC2_TGR.png")
+  png("../results/QC2_TGR.png")
   
   matplot(x = time, y = t(values_se)+100, col=colours, 
           pch=rep(21,ncol(values_se)), type=c("b"), lty=rep(1,ncol(values_se)), lwd=rep(5,ncol(values_se)),
@@ -359,8 +354,8 @@ dev.off()
 #  **Study 1 - Plot time dependent dose response of Carbon tetra chloride on Cyp1a1 gene.**
   library(ToxicoGx)
   # Load the tset 
-  drugMatrix <- readRDS("data/QC/drugMatrix.rds")
-  png("QC1_DM.png")
+  drugMatrix <- readRDS("../results/drugMatrix.rds")
+  png("../results/QC1_DM.png")
   
   drugGeneResponseCurve(tSet = drugMatrix, duration = c("16", "24"), 
                         cell_lines = "Hepatocyte", mDataTypes = "rna", 

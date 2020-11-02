@@ -16,10 +16,10 @@ create_phenoData <- function(species=c("Human","Rat"), verbose = TRUE){
   
   #load master phenoData file from TG-GATEs
   #Master phenoData file from TG-GATEs: #14 from https://dbarchive.biosciencedbc.jp/en/open-tggates/download.html
-  all_attribute <- readRDS("data/TG/Open-tggates_AllAttribute.rds")
+  all_attribute <- readRDS("../data/TG/Open-tggates_AllAttribute.rds")
   
   #all_attribute_old$SPECIES <- gsub("Rat", "R.norvegicus", all_attribute_old$SPECIES)
-  #saveRDS(all_attribute_old, "data/TG/Open-tggates_AllAttribute.rds")
+  #saveRDS(all_attribute_old, "../data/TG/Open-tggates_AllAttribute.rds")
   #subset out unwanted samples (rows)
   all_attribute <- subset(all_attribute, all_attribute$BARCODE != "No ChipData" &
                             all_attribute$TEST_TYPE == "in vitro" &
@@ -33,7 +33,7 @@ create_phenoData <- function(species=c("Human","Rat"), verbose = TRUE){
   drug_curation <- unique(all_attribute[, "COMPOUND_NAME", drop=F]) #get all unique drugs from TG-GATEs in vitro experiments
   drug_curation$unique.drugid <- drug_curation$COMPOUND_NAME #add column for lab drugid mapping; start off with all unique.drugid == tggates.drugid's
   
-  lab_curation <- read.csv("data/TG/drugswithids.csv", stringsAsFactors = F) #load lab annotation file, pubchem updated
+  lab_curation <- read.csv("../data/TG/drugswithids.csv", stringsAsFactors = F) #load lab annotation file, pubchem updated
   
   #exact/case match with lab annotations
   drug_curation$unique.drugid <- sapply(drug_curation$COMPOUND_NAME, function(x) if (tolower(x) %in% tolower(lab_curation$unique.drugid)) (lab_curation[which(tolower(x) == tolower(lab_curation$unique.drugid)),"unique.drugid"]) else x)
@@ -75,7 +75,7 @@ create_phenoData <- function(species=c("Human","Rat"), verbose = TRUE){
   
   #Human
   if (species == "Human"){
-    batch <- read_xlsx("data/TG/nar-02356-data-e-2014-File006.xlsx", sheet = "Sup_table.2")
+    batch <- read_xlsx("../data/TG/nar-02356-data-e-2014-File006.xlsx", sheet = "Sup_table.2")
     batch <- batch[-1,]
     batch <- batch[,c(1,4)]
     names(batch) <- c("BARCODE", "CELL_NAME_TYPE_ID")
@@ -84,7 +84,7 @@ create_phenoData <- function(species=c("Human","Rat"), verbose = TRUE){
     names(all_attribute)[names(all_attribute) == "CELL_NAME_TYPE_ID"] <- "batchid"
     
   } else if (species == "Rat"){ #Rat
-    batch <- read_xlsx("data/TG/nar-02356-data-e-2014-File006.xlsx", sheet = "Sup_table.3")
+    batch <- read_xlsx("../data/TG/nar-02356-data-e-2014-File006.xlsx", sheet = "Sup_table.3")
     batch <- batch[-c(1:3),]
     batch <- batch[,c(1,9)]
     colnames(batch) <- c("drugid", "batchid")
@@ -94,7 +94,7 @@ create_phenoData <- function(species=c("Human","Rat"), verbose = TRUE){
     all_attribute <- subset(all_attribute, all_attribute$ARR_DESIGN == "Rat230_2" & all_attribute$TEST_TYPE == "in vitro")
     all_attribute <- merge(all_attribute, batch, by.x = "COMPOUND_NAME", by.y = "drugid")
     
-    conv <- readRDS("data/TG/conversions_gentamicin.rds")
+    conv <- readRDS("../data/TG/conversions_gentamicin.rds")
     #Include converted doses
     need_conversion <- subset(all_attribute,all_attribute$DOSE_UNIT != "µM",select = -c(DOSE,DOSE_UNIT))
     converted <- merge(need_conversion,conv,by.x="BARCODE",by.y="BARCODE")
@@ -149,12 +149,12 @@ create_exprsData <- function(species=c("Human","Rat"), phenoData, verbose = TRUE
   if (verbose) {message("Creating eset object...")}
   
   if (species == "Human"){
-    #install.packages("data/TG/hgu133plus2hsensgcdf_22.0.0.tar.gz", repos = NULL, type = "source")#deprecated
-    install.packages("data/TG/hgu133plus2hsensgcdf_24.0.0.tar.gz", repos = NULL, type = "source")#new version 24 downloaded and eset rerun with this
+    #install.packages("../data/TG/hgu133plus2hsensgcdf_22.0.0.tar.gz", repos = NULL, type = "source")#deprecated
+    install.packages("../data/TG/hgu133plus2hsensgcdf_24.0.0.tar.gz", repos = NULL, type = "source")#new version 24 downloaded and eset rerun with this
     library("hgu133plus2hsensgcdf")
     cdf <- "hgu133plus2hsensgcdf"
   } else if (species == "Rat"){
-    install.packages("data/TG/rat2302rnensgcdf_24.0.0.tar.gz", repos = NULL, source = 'source')
+    install.packages("../data/TG/rat2302rnensgcdf_24.0.0.tar.gz", repos = NULL, source = 'source')
     library("rat2302rnensgcdf")
     cdf <- "rat2302rnensgcdf"
   }
@@ -167,16 +167,16 @@ create_exprsData <- function(species=c("Human","Rat"), phenoData, verbose = TRUE
   #celfn <- paste("/TGGATES_rat_CELfiles","/", phenoData[,"celfilename"], sep="")
   
   #eset <- just.rma(filenames = celfn, verbose = TRUE, cdfname = cdf)
-  #saveRDS(eset, paste("data/TG/eset_",species,"_",nrow(phenoData),".rds", sep = ""))
+  #saveRDS(eset, paste("../data/TG/eset_",species,"_",nrow(phenoData),".rds", sep = ""))
   #saveRDS(eset, "eset_Rat_3276.rds")
   ########################################  ALREADY NORMALIZED  ##########################################
   
   #human eset
-  eset <- readRDS(paste("data/TG/eset_",species,"_",nrow(phenoData),".rds", sep = ""))
+  eset <- readRDS(paste("../data/TG/eset_",species,"_",nrow(phenoData),".rds", sep = ""))
   
   #rat eset 
-  #eset <- readRDS("data/TG/eset_Rat_3276.rds")
-  
+  #eset <- readRDS("../data/TG/eset_Rat_3276.rds")
+  #eset<-readRDS("../data/TG/eset_Human_2382.rds")
   storageMode(eset)<-"environment"
   #subsetting probes
   eset<-subset(eset, substr(rownames(eset@assayData$exprs), 0, 4) != "AFFX")
@@ -404,7 +404,7 @@ getTGGATEs <- function(species=c("Human","Rat"),
   vector.is.empty <- function(x) {return(length(x) ==0 )}
   
   if(vector.is.empty(additional_genes) == FALSE){
-    additional_genes_mat <- matrix(NA, nrow = 6, ncol = 7)
+    additional_genes_mat <- matrix(NA, nrow = length(setdiff(rownames(exprs(eset)), featureData$gene_id)), ncol = ncol(featureData))
     additional_genes_mat[,2] <- additional_genes
     rownames(additional_genes_mat) <- additional_genes_mat[,2]
     colnames(additional_genes_mat) <- colnames(featureData)  
@@ -415,10 +415,23 @@ getTGGATEs <- function(species=c("Human","Rat"),
   if (verbose) {message("Putting the eset together...")}
   pData(eset) <- phenoData
   fData(eset) <- featureData
-  
+  #sorting rownames to maintain feature data mapping that m=is otherwise shuffled after converting to SE
+  fData(eset) <- fData(eset)[sort(rownames(fData(eset))),]
+  stopifnot(all(rownames(fData(eset)) == rownames(exprs(eset))))
+  stopifnot(all(rownames(pData(eset)) == colnames(exprs(eset))))
+  saveRDS(eset, "../data/eset_processsed.rds")
   if (verbose) {message("Creating summarized experiment object...")}
       
-    new_SE_TG <-  as(eset, value="SummarizedExperiment")
+    #new_SE_TG <-  methods::as(eset, Class ="SummarizedExperiment")
+    # new_SE_TG_test <-SummarizedExperiment::SummarizedExperiment(assays=list(rna=exprs(eset)),
+    #                                                        rowData = fData(eset), colData=pData(eset), metadata = list(annotation = "rna"))
+    # 
+    new_SE_TG <- SummarizedExperiment::makeSummarizedExperimentFromExpressionSet(eset)
+    stopifnot(all(rownames(colData(new_SE_TG)) == rownames(pData(eset))))
+    stopifnot(all(rownames(rowData(new_SE_TG)) == rownames(fData(eset))))
+    
+      saveRDS(new_SE_TG, "../data/new_SE_TG.rds")
+    
     if (verbose) {message("Done!")}
   
   if (verbose) {message(paste("Requested ",type, sep = ""))}
@@ -473,15 +486,15 @@ getTGGATEs <- function(species=c("Human","Rat"),
 }
 
 # EXAMPLE -
-tggates_human_ldh <- getTGGATEs(species = "Human", type = "LDH")
-tggates_human_dna <- getTGGATEs(species = "Human", type = "DNA")
+TGGATES_humanldh <- getTGGATEs(species = "Human", type = "LDH")
+#tggates_human_dna <- getTGGATEs(species = "Human", type = "DNA")
 
-saveRDS(tggates_human_ldh, "QC/TGGATES_humanldh.rds")
-saveRDS(tggates_human_dna, "QC/TGGATES_humandna.rds")
+saveRDS(TGGATES_humanldh, "../results/TGGATES_humanldh.rds")
+#saveRDS(tggates_human_dna, "QC/TGGATES_humandna.rds")
 
-tggates_rat_ldh <- getTGGATEs(species = "Rat", type = "LDH")
-tggates_rat_dna <- getTGGATEs(species = "Rat", type = "DNA")
+TGGATES_ratldh <- getTGGATEs(species = "Rat", type = "LDH")
+#tggates_rat_dna <- getTGGATEs(species = "Rat", type = "DNA")
 
-saveRDS(tggates_rat_ldh, "QC/TGGATES_ratldh.rds")
-saveRDS(tggates_rat_dna, "QC/TGGATES_ratdna.rds")
+saveRDS(TGGATES_ratldh, "../results/TGGATES_ratldh.rds")
+#saveRDS(tggates_rat_dna, "QC/TGGATES_ratdna.rds")
 
