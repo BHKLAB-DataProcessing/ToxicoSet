@@ -8,21 +8,21 @@ library(dplyr)
 library(SummarizedExperiment)
 
 
-# unzip("data/E-MEXP-2458.raw.1.zip", exdir = "data/E-MEXP-2458.raw" )
-# unzip("data/E-MEXP-2458.raw.2.zip", exdir = "data/E-MEXP-2458.raw" )
+# unzip("../data/E-MEXP-2458.raw.1.zip", exdir = "../data/E-MEXP-2458.raw" )
+# unzip("../data/E-MEXP-2458.raw.2.zip", exdir = "../data/E-MEXP-2458.raw" )
 
 #call CDF
 
-install.packages("data/hgu133plus2hsensgcdf_24.0.0.tar.gz", repos = NULL, type = "source")# version 24 downloaded 
+install.packages("../data/hgu133plus2hsensgcdf_24.0.0.tar.gz", repos = NULL, type = "source")# version 24 downloaded 
 library("hgu133plus2hsensgcdf")
 cdf <- "hgu133plus2hsensgcdf"
 
 #To be run for eset normalization
-celfn <- list.files(path = 'data/E-MEXP-2458.raw/', pattern = '*.CEL$', full.names = TRUE)
+celfn <- list.files(path = '../data/E-MEXP-2458.raw/', pattern = '*.CEL$', full.names = TRUE)
 
 eset_70 <- just.rma(filenames = celfn, verbose = TRUE, cdfname = cdf)
-#saveRDS(eset_70, "data/eset_70_pre.rds")
-#eset_70 <- readRDS("data/eset_70_pre.rds")
+saveRDS(eset_70, "../data/eset_70_pre.rds")
+#eset_70 <- readRDS("../data/eset_70_pre.rds")
 
 storageMode(eset_70) <- "environment"
 #subsetting out internal control probes
@@ -48,7 +48,7 @@ ensembl<-useMart("ensembl", dataset = ensembl_data, host="uswest.ensembl.org",en
 results <- getBM(attributes=c("external_gene_name","ensembl_gene_id","gene_biotype","entrezgene_id","external_transcript_name","ensembl_transcript_id"), filters = "ensembl_gene_id",values=gsub("_at","",CELgenes),mart=ensembl)
 uniqueBiomaRt <- results[!duplicated(results$ensembl_gene_id),]
 names(uniqueBiomaRt)<-c("gene_name", "gene_id", "gene_biotype", "EntrezGene.ID", "transcript_name", "transcript_id")
-#saveRDS(uniqueBiomaRt, "data/uniqueBiomaRt.rds")
+#saveRDS(uniqueBiomaRt, "../data/uniqueBiomaRt.rds")
 
 finalFeature <- uniqueBiomaRt
 
@@ -68,7 +68,7 @@ rownames(finalFeature_appended)[19930:19939] <- finalFeature_appended$gene_id[19
 #Creating phenoData object
 
 #sample to file relatiosnhip
-pheno_sdrf <- read.delim("data/E-MEXP-2458.sdrf.txt", sep = "\t",stringsAsFactors = F)
+pheno_sdrf <- read.delim("../data/E-MEXP-2458.sdrf.txt", sep = "\t",stringsAsFactors = F)
 #Rename columns
 colnames(pheno_sdrf) <- c("Source Name", "Characteristics [Organism]", "Term Source REF", "Term Accession Number", "Cell Type", "dataset.cellid",
                           "Term Source REF", "Term.Accession.Number.1", "Protocol REF", "Protocol.REF.1", "Extract Name", "Material Type", "Protocol.REF.2",
@@ -200,15 +200,18 @@ pData(eset_70) <- pheno_sdrf
 fData(eset_70) <- finalFeature_appended
 
 eset_70 <- eset_70[,order(pData(eset_70)$dataset.drugid)]
+#sorting rownames to maintain feature data mapping that is otherwise shuffled after converting to SE
+fData(eset_70) <- fData(eset_70)[sort(rownames(fData(eset_70))),]
+stopifnot(all(rownames(fData(eset_70)) == rownames(exprs(eset_70))))
+stopifnot(all(rownames(pData(eset_70)) == colnames(exprs(eset_70))))
 
-new_SE_EMEXP <-SummarizedExperiment::SummarizedExperiment(assays=list(rna=exprs(eset_70)),
-                     rowData = fData(eset_70), colData=pData(eset_70), metadata = list(annotation = "rna"))
+new_SE_EMEXP <-SummarizedExperiment::makeSummarizedExperimentFromExpressionSet(eset_70)
 
 stopifnot(all(rownames(colData(new_SE_EMEXP)) == rownames(pData(eset_70))))
 stopifnot(all(rownames(row(new_SE_EMEXP)) == rownames(fData(eset_70))))
 
 #new_SE_EMEXP <-  as(eset_70, Class = "SummarizedExperiment")
-#saveRDS(new_SE_EMEXP, "data/new_SE_EMEXP.rds")
+saveRDS(new_SE_EMEXP, "../data/new_SE_EMEXP.rds")
 ######################################################################################################################################################
 #CREATING CURATION DRUG
 #curate dataset drug names to lab names (if  present)
@@ -240,6 +243,7 @@ rownames(curationTissue) <- rownames(curationCell)
 #CREATING CELL
 cell <- subset(pheno_sdrf, select = c("Cell Type", "cellid", "dataset.cellid"), drop = F)
 cell$tissueid <- "Liver"
+cell$species <- "Human"
 cell <- unique(cell)
 rownames(cell) <- rownames(curationCell)
 
@@ -263,7 +267,7 @@ EMEXP2458 <- ToxicoSet("EMEXP2458",
                          curationTissue=curationTissue,
                          datasetType="perturbation",
                          verify = TRUE)
-saveRDS(EMEXP2458, "data/EMEXP2458.rds")
+saveRDS(EMEXP2458, "../results/EMEXP2458.rds")
 
 
 
