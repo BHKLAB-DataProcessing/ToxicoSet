@@ -49,7 +49,7 @@ drugGeneResponseCurve(tSet = TGGATES_humanldh, duration = c("2", "8", "24"),
 ```
 
 
-![Published plot](/Users/snair/Google Drive/BHKLab/TGx/All_TSetUpdate.CDF.biomart/Orcestra/data/QC/QC1_published.png)
+![Published plot](../data/QC/QC1_published.png)
 
 **Study 2 - PMID - 25399406: Fig 1A - PCA was performed using the 100 top-ranking genes with the highest fold change (absolute values) across all compounds. 2 main clusters—the lower cluster subdivided into several sub-clusters and the majority of the treated samples that move in the direction of the first principal component. .**
 ```{r, message = FALSE, fig.width = 7, fig.height = 5}
@@ -107,7 +107,7 @@ legend(10,5,legend=c("Control","treated"),col=c('dark green','light green'),pch=
 ```
 
 
-![Published plot](/Users/snair/Google Drive/BHKLab/TGx/All_TSetUpdate.CDF.biomart/Orcestra/data/QC/QC2_published.png)
+![Published plot](../data/QC/QC2_published.png)
 
 **Study 3 - PMID - 30426165 : fig 4 - Effect of azathioprine on the NRF2-associated gene module(#325)**
 ```{r, message = FALSE, fig.width = 7, fig.height = 5}
@@ -175,7 +175,7 @@ library(ToxicoGx)
 ```
 
 
-![Published plot](/Users/snair/Google Drive/BHKLab/TGx/All_TSetUpdate.CDF.biomart/Orcestra/data/QC/QC3_published.png)
+![Published plot](../data/QC/QC3_published.png)
 
 
 ## Connectivity map analysis on TG-GATEs and human hepatocarcinoma signatures.
@@ -277,7 +277,7 @@ mtext(side=2, text="Published sscMAPscores", line=5, cex = 5)
 
 ```
 
-![Published plot](/Users/snair/Google Drive/BHKLab/TGx/All_TSetUpdate.CDF.biomart/Orcestra/data/QC/ref_corrplot.png)
+![Published plot](../data/QC/ref_corrplot.png)
 
 ## QC FOR TGR - Comparing with old TSets (No published studies used for QC due to lack of suitability)
 
@@ -299,7 +299,7 @@ drugGeneResponseCurve(tSet = TGGATES_ratldh, duration = c("2", "8", "24"),
 ```
 
 
-![Published plot](/Users/snair/Google Drive/BHKLab/TGx/All_TSetUpdate.CDF.biomart/Orcestra/data/QC/S1_TGR.png)
+![Published plot](../data/QC/S1_TGR.png)
 
 **Study 2 - rat counterpart study of TGH Study 3.**
 ```{r, message = FALSE, fig.width = 7, fig.height = 5}
@@ -366,7 +366,7 @@ library(SummarizedExperiment)
 
  
 ```
-![Previous plot](/Users/snair/Google Drive/BHKLab/TGx/All_TSetUpdate.CDF.biomart/Orcestra/data/QC/S2_TGR.png)
+![Previous plot](../data/QC/S2_TGR.png)
 
 
 
@@ -394,7 +394,7 @@ drugMatrix <- readRDS("../results/drugMatrix.rds")
  #dev.off()
 ```
 
-![Previous plot](/Users/snair/Google Drive/BHKLab/TGx/All_TSetUpdate.CDF.biomart/Orcestra/data/QC/S1_DM.png)
+![Previous plot](../data/QC/S1_DM.png)
 ## QC FOR EMEXP2458 
 ```{r, message = FALSE, fig.width = 7, fig.height = 5}
 #QC1 - checking ToxicoGx functions
@@ -409,7 +409,7 @@ ToxicoGx::drugGeneResponseCurve(tSet = EMEXP2458, duration = c("12", "48"), cell
                                 drug = "Estradiol", summarize_replicates = F, verbose = T)
 #dev.off()
 ```
-![Previous plot](/Users/snair/Google Drive/BHKLab/TGx/All_TSetUpdate.CDF.biomart/Orcestra/data/QC/ref_QC2_TGx_plotting.png)
+![Previous plot](../data/QC/ref_QC2_TGx_plotting.png)
 
 ```{r, message = FALSE, fig.width = 7, fig.height = 5}
 #QC2 - check the distribution of normalized gene expression values
@@ -418,7 +418,7 @@ hist(assay(EMEXP2458@molecularProfiles$rna), xlab = "Normalized gene expression 
 #dev.off()
 ```
 
-![Previous plot](/Users/snair/Google Drive/BHKLab/TGx/All_TSetUpdate.CDF.biomart/Orcestra/data/QC/ref_QC2_norm_genes.png)
+![Previous plot](../data/QC/ref_QC2_norm_genes.png)
 ```{r, message = FALSE, fig.width = 7, fig.height = 5}
 
 #QC3 - From paper - PMID: 20106945 
@@ -474,9 +474,9 @@ legend3d("topright", legend = c("HepaRG","Hep-G2") , pch = 16, col = c("HepaRG"=
 
 #snapshot3d(filename = 'QC/QC3_PCA_T.png', fmt = 'png')
 ```
-![Previous plot](/Users/snair/Google Drive/BHKLab/TGx/All_TSetUpdate.CDF.biomart/Orcestra/data/QC/ref_QC3_PCA_CLs.png)
+![Previous plot](../data/QC/ref_QC3_PCA_CLs.png)
 
-![Previous plot](/Users/snair/Google Drive/BHKLab/TGx/All_TSetUpdate.CDF.biomart/Orcestra/data/QC/ref_QC3_PCA_T.png)
+![Previous plot](../data/QC/ref_QC3_PCA_T.png)
 
 
 
