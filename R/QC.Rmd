@@ -1,0 +1,482 @@
+---
+title: 'ToxicoGx: QC Studies'
+author:
+- Sisira Kadambat Nair
+- Esther Yoo
+- Christopher Eeles
+- Nehme El-Hachem
+- Petr Smirnov
+- Benjamin Haibe-Kains, benjamin.haibe.kains@utoronto.ca
+date: "17-11-2020"
+output:
+  word_document: default
+  pdf_document: default
+  html_document:
+    df_print: paged
+vignette: |
+  %\VignetteIndexEntry{Vignette Title} %\VignetteEngine{knitr::rmarkdown} %\usepackage[utf8]{inputenc}
+---
+
+## QC FOR TGH - Plotting gene expression changes from TG-GATEs Human dataset
+
+Our first QC is based on a plot from a paper by Rangel-Escareño et al., in which gene expression changes of CYP1A1 (gene associated with xenobiotic metabolism) has been plotted at all concentrations and time points. The plot shows clear differential expression at time 8(hr) suggesting that higher the dose, larger the impact of CCL4 on this gene.
+For plotting the gene expression under same conditions using the package, the first step is to load the datasets from disk or download them using the downloadTSet function above. In the following example, we use the toy dataset provided with the package to illustrate the process. 
+To plot, the function drugGeneResponseCurve has been used wherein mandatory inputs such as dataset, drug name, cell-line, molecular type, gene name, dose and time points should be specified.
+
+```{r, result = 'hide', message = FALSE}
+#require(devtools)
+#devtools::install_github("bhklab/ToxicoGx", ref = "master", force = T)
+```
+
+**Study 1 - Plot time dependent dose response of Carbon tetra chloride on CYP1A1 gene.**
+```{r, message = FALSE, fig.width = 7, fig.height = 5}
+library(ToxicoGx)
+library(ggplot2)
+# Load the tset 
+TGGATES_humanldh <- readRDS("../results/TGGATES_humanldh.rds")
+
+#png("../results/QC1_TGH.png")
+drugGeneResponseCurve(tSet = TGGATES_humanldh, duration = c("2", "8", "24"), 
+                      cell_lines = "Hepatocyte", mDataTypes = "rna", 
+                      features = "ENSG00000140465_at", 
+                      dose = c("Control", "Low", "Middle","High"),
+                      drug = "Carbon tetrachloride", 
+                      summarize_replicates = F,
+                      ggplot_args=list(scale_color_manual(values=c("red", "green", "dark blue", "turquoise"))),
+                      verbose = T)
+#dev.off()
+  
+```
+
+
+![Published plot](/Users/snair/Google Drive/BHKLab/TGx/All_TSetUpdate.CDF.biomart/Orcestra/data/QC/QC1_published.png)
+
+**Study 2 - PMID - 25399406: Fig 1A - PCA was performed using the 100 top-ranking genes with the highest fold change (absolute values) across all compounds. 2 main clusters—the lower cluster subdivided into several sub-clusters and the majority of the treated samples that move in the direction of the first principal component. .**
+```{r, message = FALSE, fig.width = 7, fig.height = 5}
+library(ToxicoGx)
+library(car)
+library(SummarizedExperiment)
+#Genes of interest
+probes <- readRDS("../data/QC/PCA_probes.rds")
+
+#extracting data from tset
+#featureData
+feat_data <- as.data.frame(rowData(TGGATES_humanldh@molecularProfiles$rna))
+#metaData
+pheno_data <- as.data.frame(colData(TGGATES_humanldh@molecularProfiles$rna))
+#expression values
+assay_data <- assay(TGGATES_humanldh@molecularProfiles$rna)
+rownames(assay_data) <- gsub("_at", "", rownames(assay_data))
+
+#subsetting the samples - Control, high dose at 24 hr time point
+samples <- subset(pheno_data$samplename, (pheno_data$dose_level == "Control" | pheno_data$dose_level == "High") & pheno_data$duration == "24")
+
+control <- subset(pheno_data,pheno_data$dose_level=="Control" & pheno_data$duration == "24",select=c(samplename))
+
+high <- subset(pheno_data,pheno_data$dose_level=="High" & pheno_data$duration == "24",select=c(samplename))
+
+expr <- as.data.frame(t(subset(assay_data,rownames(assay_data) %in% probes,select=as.character(samples))))
+
+
+expr$control<-NA
+expr$control[rownames(expr) %in% as.character(control$samplename)] <- 1 #Control
+expr$control[rownames(expr) %in% as.character(high$samplename)] <- 2 #High
+
+#PCA & plotting
+tset.pca <- prcomp(as.matrix(expr),scale. = TRUE)
+
+#png("../results/QC2_TGH.png")
+
+scatterplot(x = tset.pca$x[,1], 
+            y = tset.pca$x[,2], 
+            regLine = FALSE, 
+            smooth = FALSE, 
+            boxplots = FALSE, 
+            groups = expr$control, 
+            col = c('dark green','chartreuse1'),
+            cex = 1, 
+            pch = c(20,20,20),
+            legend=FALSE,
+            xlab="PC1",
+            ylab="PC2",
+            main="Principal Component Analysis : High Dose, 24h")
+legend(10,5,legend=c("Control","treated"),col=c('dark green','light green'),pch=c(20,20,20),cex=1, bty = 0, pt.cex = 2)
+#dev.off()
+
+  
+```
+
+
+![Published plot](/Users/snair/Google Drive/BHKLab/TGx/All_TSetUpdate.CDF.biomart/Orcestra/data/QC/QC2_published.png)
+
+**Study 3 - PMID - 30426165 : fig 4 - Effect of azathioprine on the NRF2-associated gene module(#325)**
+```{r, message = FALSE, fig.width = 7, fig.height = 5}
+library(ToxicoGx)
+  library(SummarizedExperiment)
+  
+  # Load the tset 
+  drug <- "Azathioprine"
+  conc <- 72.8
+  
+  #Genes of interest
+  genes <-c("ENSG00000159231_at","ENSG00000125037_at", "ENSG00000102393_at","ENSG00000181019_at", "ENSG00000109854_at", "ENSG00000164220_at")
+  
+  #apply function to extract exprs matrix
+  values_se <- lapply(genes, function(gene){
+    #subset pehnodata for desired drugs
+    drug_subset <- subset(as.data.frame(colData(TGGATES_humanldh@molecularProfiles$rna)),drugid == drug,select=c(samplename, dose_level, individual_id,concentration))
+    #subset for ony high conc
+    drug_subset_high <- subset(drug_subset, concentration == conc)
+    #extracting exprs
+    assay <- assay(TGGATES_humanldh@molecularProfiles$rna)
+    #subsetting exprs matrix
+    drug_subset$expression <- assay[gene,as.character(drug_subset$samplename)]
+    drug_subset_high$expression <- assay[gene,as.character(drug_subset_high$samplename)]
+    #ctrl rep
+    ctrlA <- na.omit(drug_subset$expression[select=c(drug_subset$dose_level == "Control" & drug_subset$individual_id=="1")])
+    ctrlB <- na.omit(drug_subset$expression[select=c(drug_subset$dose_level == "Control" & drug_subset$individual_id=="2")])
+    
+    highA <- na.omit(drug_subset_high$expression[select=c(drug_subset_high$dose_level == "High" & drug_subset_high$individual_id=="1")])
+    highB <- na.omit(drug_subset_high$expression[select=c(drug_subset_high$dose_level == "High" & drug_subset_high$individual_id=="2")])
+    
+    ctrl <- rowMeans(cbind(ctrlA, ctrlB))
+    high <- rowMeans(cbind(highA, highB))
+    
+    
+    normalised_vehicle <- (high-ctrl)*100
+    return(normalised_vehicle)
+  })
+  
+  values_se <- as.data.frame(do.call(rbind,values_se))
+  colnames(values_se) <- c(2,8,24)
+  rownames(values_se) <- genes
+  
+  
+  time <- c(2,8,24)
+  legendnames <- c('CBR3','EMC3','GLA','NQO1','HTAT1P2','F2RL2')
+  colours <- c("purple", "red","green","violet","orange", "turquoise")
+  
+  #png("../results/QC3_TGH.png")
+  
+  matplot(x = time, y = t(values_se)+100, col=colours, 
+          pch=rep(21,ncol(values_se)), type=c("b"), lty=rep(1,ncol(values_se)), lwd=rep(5,ncol(values_se)),
+          bg=colours,
+          xlim=range(0,4,8,12,16,20,24),ylim=range(0,100,200,300,400,500),main="Azathioprine (Mod 325)",
+          xlab="Time",ylab="mRNA Level (% Vehicle)")
+  par(font=2) 
+  legend(23.1,520,legend=legendnames, 
+         col = colours,
+         pch=rep(21,ncol(values_se)), pt.bg = colours,
+         text.col = 'black',
+         lty=rep(1,ncol(values_se)),lwd = rep(5, ncol(values_se)), cex=0.75,xjust = 0.5,bty = "n", adj = 0.25)
+  
+  #dev.off()
+  
+```
+
+
+![Published plot](/Users/snair/Google Drive/BHKLab/TGx/All_TSetUpdate.CDF.biomart/Orcestra/data/QC/QC3_published.png)
+
+
+## Connectivity map analysis on TG-GATEs and human hepatocarcinoma signatures.
+
+For the second case study, we will recreate an analysis from the paper by Jos Kleinjans et al., wherein connectivity mapping has been used to predict compound carcinogenicity
+by linking in vivo human hepatocarcinoma (HCC) signature geneset with in vitro TG-GATEs primary human hepatocyte data. In this example, we are using the toy dataset. The full dataset has to be downloaded to carry out the whole analysis done in the paper.
+The HCC signature, already mapped to the gene level, has been included in this package and it can be loaded by calling data(HCC_sig). Once the dataset is loaded, recreate drug signatures for each drug using the function drugPerturbationSig to perform statistical modelling of the transcriptomic response to the application of each drug. We then compare the observed up-regulated and down-regulated genes to HCC signature published in the paper. The output will be the GSEA connectivity score with FDR values that can be used to determine the correlation between the two signatures.
+
+**Study 4 - Case study - PMID: 23940306 **
+
+```{r, message = FALSE, results = 'asis'}
+require(xtable)
+  library(ToxicoGx)
+library(CoreGx)
+library(xtable)
+library(Biobase)
+library(readxl)
+library(car)
+library(ggplot2)
+library(SummarizedExperiment)
+library(graphics)
+
+#HCC signature genes downloaded from supp data.
+raw_hcc <- read.delim("../data/QC/Supp._data_2.txt", sep = "\t") 
+colnames(raw_hcc) <- c("feature","direction")
+
+ff <- as.data.frame(rowData(TGGATES_humanldh@molecularProfiles$rna))
+
+#merge fdata with raw hcc to map entrez id
+
+merge_entrez <- merge(raw_hcc, ff, by.x = "feature", by.y = "EntrezGene.ID", all.x = T)
+
+ss <- subset(merge_entrez, select = c("gene_id","direction"), drop= F)
+
+colnames(ss)[1] <- "feature"
+HCC_sig <- subset(ss, subset = !is.na(ss$feature), drop = F)
+
+HCC_sig <- HCC_sig[order(HCC_sig$direction),]
+
+rownames(HCC_sig) <- HCC_sig[,1]
+############################################################################################################################################
+#drugsTosubset <- c("isoniazid", "omeprazole", "carbon tetrachloride")
+#drugsTosubset <- c("azathioprine", "ciclosporin", "isoniazid", "omeprazole", "diclofenac")
+#TGGATES_humanldh_subset <- subsetTo(TGGATES_humanldh, drugs = drugsTosubset, drop=F)
+
+drug.perturbationAllCtrlLow <- drugPerturbationSig(TGGATES_humanldh,mDataType="rna",cell_lines = "Hepatocyte",
+                                                   duration = "24",dose = c("Control", "Low"),drugs = drugNames(TGGATES_humanldh),nthread = 4,
+                                                   verbose=FALSE)
+saveRDS(drug.perturbationAllCtrlLow, "../data/QC/drug.perturbationAllCtrlLow.rds")
+
+#plot sscMAP versus my connectivity score on ALL drugs
+#drug.perturbationAllCtrlLow <- readRDS("../data/QC/drug.perturbationAllCtrlLow.rds")
+
+res_all <- apply(drug.perturbationAllCtrlLow[,,c("tstat", "fdr")],
+                 2, function(x, HCC){
+                   return(connectivityScore(x=x,
+                                            y=HCC[,2,drop=FALSE],
+                                            method="fgsea", nperm=1000, nthread = 4))
+                 }, HCC=HCC_sig)
+
+rownames(res_all) <- c("Connectivity", "P Value")
+res_all <- t(res_all)
+res_all <-  cbind(res_all,"FDR" = p.adjust(res_all[,2], method="fdr"))
+res_all <- res_all[order(res_all[,3]),]
+saveRDS(res_all, "../data/QC/res_all.rds")
+#res_all <- readRDS("../data/QC/res_all.rds")
+############################################################################################################################################
+library(readxl)
+sscmap.scores <- read.csv("../data/QC/CS3_table3.csv", stringsAsFactors = F)
+
+badchars <- "[\xb5]|[]|[ ,]|[;]|[:]|[-]|[+]|[*]|[%]|[$]|[#]|[{]|[}]|[[]|[]]|[|]|[\\^]|[/]|[\\]|[.]|[_]|[ ]|[(]|[)]"
+
+sscmap.scores$cleannames <- toupper(gsub(badchars, "", sscmap.scores$Compound_changed))
+
+
+res_new <- cbind(res_all, "cleannames" = toupper(gsub(badchars, "", rownames(res_all))))
+
+mer_ssc_res <- merge(sscmap.scores, res_new, by = "cleannames", all.x = T )  
+
+mer_ssc_res <- subset(mer_ssc_res, subset = !is.na(mer_ssc_res$Connectivity), drop = F)
+
+
+sub_mer_ssc_res <- subset(mer_ssc_res, select = c("Compound_changed","setscore", "Connectivity"))
+
+sub_mer_ssc_res$Connectivity <- as.numeric(as.character(sub_mer_ssc_res$Connectivity))
+
+#check spearman's correlation
+cor.test(sub_mer_ssc_res$Connectivity,sub_mer_ssc_res$setscore, method = "s")
+
+#plot the correlation
+#pdf("../data/QC/CS3_corrplot_all.pdf", width = 25, height = 20)
+scatterplot(sub_mer_ssc_res$Connectivity,sub_mer_ssc_res$setscore,boxplots = F, grid = F, xlab = "", ylab = "",cex = 2,pch = 20, cex.lab=4, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, par(mar = c(9, 9, 0, 0)), smooth = F)
+mtext(side=1, text="ToxicoGx recomputed scores", line=5, cex = 5)
+mtext(side=2, text="Published sscMAPscores", line=5, cex = 5)
+
+#dev.off() 
+#  In the table, certain drugs show a positive connectivity score. This observation aligns with the trends reported in the paper. 
+ 
+
+```
+
+![Published plot](/Users/snair/Google Drive/BHKLab/TGx/All_TSetUpdate.CDF.biomart/Orcestra/data/QC/ref_corrplot.png)
+
+## QC FOR TGR - Comparing with old TSets (No published studies used for QC due to lack of suitability)
+
+
+**Study 1 - Plot time dependent dose response of Carbon tetra chloride on Cyp1a1 gene.**
+```{r, message = FALSE, fig.width = 7, fig.height = 5}
+library(ToxicoGx)
+# Load the tset 
+TGGATES_ratldh <- readRDS("../results/TGGATES_ratldh.rds")
+drugGeneResponseCurve(tSet = TGGATES_ratldh, duration = c("2", "8", "24"), 
+                        cell_lines = "Hepatocyte", mDataTypes = "rna", 
+                        features = "ENSRNOG00000019500_at", 
+                        dose = c("Control", "Low", "Middle","High"),
+                        drug = "Carbon tetrachloride", 
+                        summarize_replicates = F,
+                        ggplot_args=list(scale_color_manual(values=c("green", "blue", "violet", "red"))),
+                        verbose = T)
+ 
+```
+
+
+![Published plot](/Users/snair/Google Drive/BHKLab/TGx/All_TSetUpdate.CDF.biomart/Orcestra/data/QC/S1_TGR.png)
+
+**Study 2 - rat counterpart study of TGH Study 3.**
+```{r, message = FALSE, fig.width = 7, fig.height = 5}
+library(ToxicoGx)
+library(SummarizedExperiment)
+
+# Load the tset 
+  drug <- "Azathioprine"
+  conc <- 3.6
+  
+  #Genes of interest
+  genes <-c("ENSRNOG00000001701_at","ENSRNOG00000009934_at", "ENSRNOG00000012772_at","ENSRNOG00000022189_at", "ENSRNOG00000018054_at")
+  
+  #apply function to extract exprs matrix
+  values_se <- lapply(genes, function(gene){
+    #subset pehnodata for desired drugs
+    drug_subset <- subset(as.data.frame(colData(TGGATES_ratldh@molecularProfiles$rna)),drugid == drug,select=c(samplename, dose_level, individual_id,concentration))
+    #subset for ony high conc
+    drug_subset_high <- subset(drug_subset, concentration == conc)
+    #extracting exprs
+    assay <- assay(TGGATES_ratldh@molecularProfiles$rna)
+    #subsetting exprs matrix
+    drug_subset$expression <- assay[gene,as.character(drug_subset$samplename)]
+    drug_subset_high$expression <- assay[gene,as.character(drug_subset_high$samplename)]
+    #ctrl rep
+    ctrlA <- na.omit(drug_subset$expression[select=c(drug_subset$dose_level == "Control" & drug_subset$individual_id=="1")])
+    ctrlB <- na.omit(drug_subset$expression[select=c(drug_subset$dose_level == "Control" & drug_subset$individual_id=="2")])
+    
+    highA <- na.omit(drug_subset_high$expression[select=c(drug_subset_high$dose_level == "High" & drug_subset_high$individual_id=="1")])
+    highB <- na.omit(drug_subset_high$expression[select=c(drug_subset_high$dose_level == "High" & drug_subset_high$individual_id=="2")])
+    
+    ctrl <- rowMeans(cbind(ctrlA, ctrlB))
+    high <- rowMeans(cbind(highA, highB))
+    
+    
+    normalised_vehicle <- (high-ctrl)*100
+    return(normalised_vehicle)
+  })
+  
+  values_se <- as.data.frame(do.call(rbind,values_se))
+  colnames(values_se) <- c(2,8,24)
+  rownames(values_se) <- genes
+  
+  
+  time <- c(2,8,24)
+  legendnames <- c('CBR3','EMC3','NQO1','HTAT1P2','F2RL2')
+  colours <- c("purple", "red","green","violet","orange", "turquoise")
+  
+  #png("../results/QC2_TGR.png")
+  
+  matplot(x = time, y = t(values_se)+100, col=colours, 
+          pch=rep(21,ncol(values_se)), type=c("b"), lty=rep(1,ncol(values_se)), lwd=rep(5,ncol(values_se)),
+          bg=colours,
+          xlim=range(0,4,8,12,16,20,24),ylim=range(0,100,200,300,400,500),main="Azathioprine (Mod 325)",
+          xlab="Time",ylab="mRNA Level (% Vehicle)")
+  par(font=2) 
+  legend(23.1,520,legend=legendnames, 
+         col = colours,
+         pch=rep(21,ncol(values_se)), pt.bg = colours,
+         text.col = 'black',
+         lty=rep(1,ncol(values_se)),lwd = rep(5, ncol(values_se)), cex=0.75,xjust = 0.5,bty = "n", adj = 0.25)
+  
+  #dev.off()
+
+ 
+```
+![Previous plot](/Users/snair/Google Drive/BHKLab/TGx/All_TSetUpdate.CDF.biomart/Orcestra/data/QC/S2_TGR.png)
+
+
+
+
+## QC FOR DM - Comparing with old TSets (No published studies used for QC due to lack of suitability)
+
+
+**Study 1 - Plot time dependent dose response of Carbon tetra chloride on Cyp1a1 gene.**
+```{r, message = FALSE, fig.width = 7, fig.height = 5}
+library(ToxicoGx)
+# Load the tset 
+drugMatrix <- readRDS("../results/drugMatrix.rds")
+  #png("../results/QC1_DM.png")
+  
+  drugGeneResponseCurve(tSet = drugMatrix, duration = c("16", "24"), 
+                        cell_lines = "Hepatocyte", mDataTypes = "rna", 
+                        features = "ENSRNOG00000019500_at", 
+                        dose = c("Control","High"),
+                        drug = "Carbon tetrachloride", 
+                        summarize_replicates = F,
+                        ggplot_args=list(scale_color_manual(values=c("green", "blue", "violet", "red"))),
+                        
+                        verbose = T)
+  
+ #dev.off()
+```
+
+![Previous plot](/Users/snair/Google Drive/BHKLab/TGx/All_TSetUpdate.CDF.biomart/Orcestra/data/QC/S1_DM.png)
+## QC FOR EMEXP2458 
+```{r, message = FALSE, fig.width = 7, fig.height = 5}
+#QC1 - checking ToxicoGx functions
+library(data.table)
+library(ToxicoGx)
+
+EMEXP2458 <- readRDS("../results/EMEXP2458.rds")
+
+#png("../results/QC2_TGx_plotting.png")
+ToxicoGx::drugGeneResponseCurve(tSet = EMEXP2458, duration = c("12", "48"), cell_lines = "HepaRG", mDataTypes = "rna", 
+                                dose = c("Control","High"),features = "ENSG00000000003_at",
+                                drug = "Estradiol", summarize_replicates = F, verbose = T)
+#dev.off()
+```
+![Previous plot](/Users/snair/Google Drive/BHKLab/TGx/All_TSetUpdate.CDF.biomart/Orcestra/data/QC/ref_QC2_TGx_plotting.png)
+
+```{r, message = FALSE, fig.width = 7, fig.height = 5}
+#QC2 - check the distribution of normalized gene expression values
+#png("../results/QC2_norm_genes.png")
+hist(assay(EMEXP2458@molecularProfiles$rna), xlab = "Normalized gene expression values", main = "Distribution of normalized gene expression values")
+#dev.off()
+```
+
+![Previous plot](/Users/snair/Google Drive/BHKLab/TGx/All_TSetUpdate.CDF.biomart/Orcestra/data/QC/ref_QC2_norm_genes.png)
+```{r, message = FALSE, fig.width = 7, fig.height = 5}
+
+#QC3 - From paper - PMID: 20106945 
+#PCA of all experimental conditions on the two cell lines. (Fig 2)
+#extracting data from tset
+library(affy)
+library(ToxicoGx)
+library(SummarizedExperiment)
+library(rgl)
+
+runENSGversions <- function(TSet){
+  
+  
+  se <- TSet@molecularProfiles$rna
+  
+  expr <- assay(se)
+  
+  ourData <- expr
+  
+  geneInfo <- featureInfo(TSet, "rna")
+  
+  ourDataEnsgMap <- geneInfo[rownames(ourData), "gene_id"]
+  
+  ourDataKeep <- !is.na(ourDataEnsgMap) & !(ourDataEnsgMap %in% ourDataEnsgMap[duplicated(ourDataEnsgMap)])
+  print("genes cleaned up from TSet")
+  
+  
+  ourData <- ourData[ourDataKeep,]
+  
+  rownames(ourData) <- ourDataEnsgMap[ourDataKeep]
+  
+  colnames(ourData) <- se[,colnames(ourData)]$Array.Data.File
+  
+  return(ourData)
+}
+
+
+op_ensgversion <- runENSGversions(TSet = EMEXP2458)
+
+se <- EMEXP2458@molecularProfiles$rna
+pca.EMEXP2458 <- prcomp(t(op_ensgversion), center=TRUE, scale.=TRUE)
+cell <- colData(se)[match(rownames(pca.EMEXP2458$x), se$Array.Data.File), "cellid"]
+time <- colData(se)[match(rownames(pca.EMEXP2458$x), se$Array.Data.File), "duration"]
+
+plot3d(pca.EMEXP2458$x[,1:3], col=c("HepaRG"="red", "Hep-G2" = "blue")[cell], size=6, main="By cell lines")
+legend3d("topright", legend = c("HepaRG","Hep-G2") , pch = 16, col = c("HepaRG"="red", "Hep-G2" = "blue"), cex=1, inset=c(0.02))
+
+#snapshot3d(filename = 'QC/QC3_PCA_CLs.png', fmt = 'png')
+
+#commented out since 3D plot will replace the previous plot, but can be checked after running QC3_PCA_CLs.
+# plot3d(pca.EMEXP2458$x[,1:3], col=c("12"="orange", "48" = "turquoise")[as.character(time)], size=6, main="By time points")
+# legend3d("topright", legend = c("12hr","48hr") , pch = 16, col = c("12"="orange", "48" = "turquoise"), cex=2, inset=c(0.02))
+
+#snapshot3d(filename = 'QC/QC3_PCA_T.png', fmt = 'png')
+```
+![Previous plot](/Users/snair/Google Drive/BHKLab/TGx/All_TSetUpdate.CDF.biomart/Orcestra/data/QC/ref_QC3_PCA_CLs.png)
+
+![Previous plot](/Users/snair/Google Drive/BHKLab/TGx/All_TSetUpdate.CDF.biomart/Orcestra/data/QC/ref_QC3_PCA_T.png)
+
+
+
