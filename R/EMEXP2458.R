@@ -208,7 +208,7 @@ stopifnot(all(rownames(pData(eset_70)) == colnames(exprs(eset_70))))
 new_SE_EMEXP <-SummarizedExperiment::makeSummarizedExperimentFromExpressionSet(eset_70)
 
 stopifnot(all(rownames(colData(new_SE_EMEXP)) == rownames(pData(eset_70))))
-stopifnot(all(rownames(row(new_SE_EMEXP)) == rownames(fData(eset_70))))
+stopifnot(all(rownames(rowData(new_SE_EMEXP)) == rownames(fData(eset_70))))
 
 #new_SE_EMEXP <-  as(eset_70, Class = "SummarizedExperiment")
 saveRDS(new_SE_EMEXP, "../data/new_SE_EMEXP.rds")
